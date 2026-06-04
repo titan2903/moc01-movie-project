@@ -10,14 +10,14 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Movie Catalog',
+      title: 'Movie Project',
       debugShowCheckedModeBanner:
           true, // Displays the DEBUG banner exactly like in the image
       theme: ThemeData(
         scaffoldBackgroundColor: const Color(0xFFF9F9FC),
         useMaterial3: true,
       ),
-      home: const MovieCatalogScreen(),
+      home: const MovieProjectScreen(),
     );
   }
 }
@@ -34,8 +34,8 @@ class Movie {
   });
 }
 
-class MovieCatalogScreen extends StatelessWidget {
-  const MovieCatalogScreen({super.key});
+class MovieProjectScreen extends StatelessWidget {
+  const MovieProjectScreen({super.key});
 
   static const List<Movie> _movies = [
     Movie(title: 'Inception', releaseDate: '2010-07-15', rating: 8.4),
@@ -58,7 +58,7 @@ class MovieCatalogScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Movie Catalog',
+          'Movie Project',
           style: TextStyle(
             color: Color(0xFF1A1A1A),
             fontWeight: FontWeight.w600,

@@ -1,6 +1,6 @@
 {
-    "name": "movie_catalog",
-    "short_name": "movie_catalog",
+    "name": "movie_project",
+    "short_name": "movie_project",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
