@@ -11,6 +11,10 @@ void main() {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const MyApp());
 
+    // Wait for the FutureBuilder delay (2 seconds)
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+
     // Verify that the AppBar title 'Movie Catalog' is present.
     expect(find.text('Movie Catalog'), findsOneWidget);
 

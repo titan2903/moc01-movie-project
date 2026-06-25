@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'bloc/favorite_bloc.dart';
+import 'bloc/favorite_event.dart';
+import 'bloc/favorite_state.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,14 +14,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Movie Project',
-      debugShowCheckedModeBanner: true, // Displays the DEBUG banner
-      theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFF9F9FC),
-        useMaterial3: true,
+    return BlocProvider(
+      create: (context) => FavoriteBloc(),
+      child: MaterialApp(
+        title: 'Movie Project',
+        debugShowCheckedModeBanner: true, // Displays the DEBUG banner
+        theme: ThemeData(
+          scaffoldBackgroundColor: const Color(0xFFF9F9FC),
+          useMaterial3: true,
+        ),
+        home: const MovieProjectScreen(),
       ),
-      home: const MovieProjectScreen(),
     );
   }
 }
@@ -43,7 +51,7 @@ class MovieProjectScreen extends StatefulWidget {
 }
 
 class _MovieProjectScreenState extends State<MovieProjectScreen> {
-  final Set<String> _favorites = {};
+  late Future<List<Movie>> _moviesFuture;
 
   static const List<Movie> _movies = [
     Movie(
@@ -78,14 +86,11 @@ class _MovieProjectScreenState extends State<MovieProjectScreen> {
     ),
   ];
 
-  void _toggleFavorite(String title) {
-    setState(() {
-      if (_favorites.contains(title)) {
-        _favorites.remove(title);
-      } else {
-        _favorites.add(title);
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    // Simulate loading movies from a network API
+    _moviesFuture = Future.delayed(const Duration(seconds: 2), () => _movies);
   }
 
   @override
@@ -108,338 +113,337 @@ class _MovieProjectScreenState extends State<MovieProjectScreen> {
           child: Container(color: const Color(0xFFE5E5EA), height: 1.0),
         ),
       ),
-      body: ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-        child: ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          itemCount: _movies.length,
-          itemBuilder: (context, index) {
-            final movie = _movies[index];
-            final isFavorited = _favorites.contains(movie.title);
-            return Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 12.0,
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => MovieDetailScreen(
-                        movie: movie,
-                        isFavorited: _favorites.contains(movie.title),
-                        onFavoriteToggle: () => _toggleFavorite(movie.title),
+      body: FutureBuilder<List<Movie>>(
+        future: _moviesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return const Center(child: Text('Error loading movies.'));
+          }
+
+          final movies = snapshot.data!;
+          return ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              itemCount: movies.length,
+              itemBuilder: (context, index) {
+                final movie = movies[index];
+                return BlocBuilder<FavoriteBloc, FavoriteState>(
+                  builder: (context, state) {
+                    final isFavorited = state.favorites.contains(movie.title);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                        vertical: 12.0,
                       ),
-                    ),
-                  ).then((_) {
-                    // Force refresh list UI in case it was toggled on detail screen
-                    setState(() {});
-                  });
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Gray Movie Poster Placeholder
-                      Container(
-                        width: 75,
-                        height: 110,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE2E2E6),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.movie_creation_outlined,
-                            color: Colors.white,
-                            size: 32,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MovieDetailScreen(
+                                movie: movie,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Gray Movie Poster Placeholder
+                              Container(
+                                width: 75,
+                                height: 110,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE2E2E6),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.movie_creation_outlined,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              // Movie Details
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      movie.title,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF1A1A1A),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      movie.releaseDate,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF8E8E93),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.star,
+                                          color: Color(0xFFFFCC00),
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          movie.rating.toString(),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF1A1A1A),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Favorite button
+                              IconButton(
+                                icon: Icon(
+                                  isFavorited ? Icons.favorite : Icons.favorite_border,
+                                  color: isFavorited
+                                      ? const Color(0xFFFF3B30)
+                                      : const Color(0xFF8E8E93),
+                                ),
+                                onPressed: () {
+                                  context.read<FavoriteBloc>().add(ToggleFavoriteEvent(movie.title));
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      // Movie Details
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(
-                              movie.title,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              movie.releaseDate,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF8E8E93),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.star,
-                                  color: Color(0xFFFFCC00),
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  movie.rating.toString(),
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF1A1A1A),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Favorite button
-                      IconButton(
-                        icon: Icon(
-                          isFavorited ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorited
-                              ? const Color(0xFFFF3B30)
-                              : const Color(0xFF8E8E93),
-                        ),
-                        onPressed: () => _toggleFavorite(movie.title),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
+                    );
+                  },
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-class MovieDetailScreen extends StatefulWidget {
+class MovieDetailScreen extends StatelessWidget {
   final Movie movie;
-  final bool isFavorited;
-  final VoidCallback onFavoriteToggle;
 
   const MovieDetailScreen({
     super.key,
     required this.movie,
-    required this.isFavorited,
-    required this.onFavoriteToggle,
   });
 
   @override
-  State<MovieDetailScreen> createState() => _MovieDetailScreenState();
-}
-
-class _MovieDetailScreenState extends State<MovieDetailScreen> {
-  late bool _isFavorited;
-
-  @override
-  void initState() {
-    super.initState();
-    _isFavorited = widget.isFavorited;
-  }
-
-  void _toggleFavorite() {
-    setState(() {
-      _isFavorited = !_isFavorited;
-    });
-    widget.onFavoriteToggle();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FC),
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1A1A1A), size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Movie Details',
-          style: TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontWeight: FontWeight.w600,
-            fontSize: 22,
-          ),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1.0),
-          child: Container(color: const Color(0xFFE5E5EA), height: 1.0),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isFavorited ? Icons.favorite : Icons.favorite_border,
-              color: _isFavorited ? const Color(0xFFFF3B30) : const Color(0xFF8E8E93),
+    return BlocBuilder<FavoriteBloc, FavoriteState>(
+      builder: (context, state) {
+        final isFavorited = state.favorites.contains(movie.title);
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF9F9FC),
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1A1A1A), size: 20),
+              onPressed: () => Navigator.pop(context),
             ),
-            onPressed: _toggleFavorite,
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Large Poster Header Placeholder
-            Container(
-              width: double.infinity,
-              height: 250,
-              decoration: const BoxDecoration(
-                color: Color(0xFFE2E2E6),
+            title: const Text(
+              'Movie Details',
+              style: TextStyle(
+                color: Color(0xFF1A1A1A),
+                fontWeight: FontWeight.w600,
+                fontSize: 22,
               ),
-              child: const Center(
-                child: Icon(
-                  Icons.movie_creation_outlined,
-                  color: Colors.white,
-                  size: 64,
+            ),
+            centerTitle: true,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1.0),
+              child: Container(color: const Color(0xFFE5E5EA), height: 1.0),
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(
+                  isFavorited ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorited ? const Color(0xFFFF3B30) : const Color(0xFF8E8E93),
                 ),
+                onPressed: () {
+                  context.read<FavoriteBloc>().add(ToggleFavoriteEvent(movie.title));
+                },
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Movie Title
-                  Text(
-                    widget.movie.title,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A),
-                      letterSpacing: -0.5,
+            ],
+          ),
+          body: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Large Poster Header Placeholder
+                Container(
+                  width: double.infinity,
+                  height: 250,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE2E2E6),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.movie_creation_outlined,
+                      color: Colors.white,
+                      size: 64,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  // Metadata row
-                  Row(
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Release Date Icon & Text
-                      const Icon(
-                        Icons.calendar_today_outlined,
-                        color: Color(0xFF8E8E93),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
+                      // Movie Title
                       Text(
-                        widget.movie.releaseDate,
+                        movie.title,
                         style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF8E8E93),
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A1A),
+                          letterSpacing: -0.5,
                         ),
                       ),
-                      const SizedBox(width: 24),
-                      // Rating Icon & Text
-                      const Icon(
-                        Icons.star_rounded,
-                        color: Color(0xFFFFCC00),
-                        size: 20,
+                      const SizedBox(height: 12),
+                      // Metadata row
+                      Row(
+                        children: [
+                          // Release Date Icon & Text
+                          const Icon(
+                            Icons.calendar_today_outlined,
+                            color: Color(0xFF8E8E93),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            movie.releaseDate,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF8E8E93),
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          // Rating Icon & Text
+                          const Icon(
+                            Icons.star_rounded,
+                            color: Color(0xFFFFCC00),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            movie.rating.toString(),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                          ),
+                          const Text(
+                            ' / 10',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF8E8E93),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        widget.movie.rating.toString(),
-                        style: const TextStyle(
-                          fontSize: 16,
+                      const SizedBox(height: 20),
+                      // Divider
+                      Container(
+                        height: 1,
+                        color: const Color(0xFFE5E5EA),
+                      ),
+                      const SizedBox(height: 20),
+                      // Synopsis Header
+                      const Text(
+                        'Synopsis',
+                        style: TextStyle(
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1A1A1A),
                         ),
                       ),
-                      const Text(
-                        ' / 10',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF8E8E93),
+                      const SizedBox(height: 8),
+                      // Synopsis Text
+                      Text(
+                        movie.synopsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.5,
+                          color: Color(0xFF4A4A4A),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      // Big Premium Favorite Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            context.read<FavoriteBloc>().add(ToggleFavoriteEvent(movie.title));
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isFavorited
+                                ? const Color(0xFFFFE5E5)
+                                : Colors.white,
+                            foregroundColor: isFavorited
+                                ? const Color(0xFFFF3B30)
+                                : const Color(0xFF1A1A1A),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: isFavorited
+                                    ? const Color(0xFFFF3B30).withOpacity(0.5)
+                                    : const Color(0xFFE5E5EA),
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                          icon: Icon(
+                            isFavorited ? Icons.favorite : Icons.favorite_border,
+                            size: 20,
+                          ),
+                          label: Text(
+                            isFavorited ? 'Remove from Favorites' : 'Add to Favorites',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  // Divider
-                  Container(
-                    height: 1,
-                    color: const Color(0xFFE5E5EA),
-                  ),
-                  const SizedBox(height: 20),
-                  // Synopsis Header
-                  const Text(
-                    'Synopsis',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Synopsis Text
-                  Text(
-                    widget.movie.synopsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      height: 1.5,
-                      color: Color(0xFF4A4A4A),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  // Big Premium Favorite Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
-                      onPressed: _toggleFavorite,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFavorited
-                            ? const Color(0xFFFFE5E5)
-                            : Colors.white,
-                        foregroundColor: _isFavorited
-                            ? const Color(0xFFFF3B30)
-                            : const Color(0xFF1A1A1A),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(
-                            color: _isFavorited
-                                ? const Color(0xFFFF3B30).withOpacity(0.5)
-                                : const Color(0xFFE5E5EA),
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                      icon: Icon(
-                        _isFavorited ? Icons.favorite : Icons.favorite_border,
-                        size: 20,
-                      ),
-                      label: Text(
-                        _isFavorited ? 'Remove from Favorites' : 'Add to Favorites',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
