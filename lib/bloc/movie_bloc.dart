@@ -21,13 +21,24 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
     FetchMoviesEvent event,
     Emitter<MovieState> emit,
   ) async {
-    emit(MovieLoading());
+    // If already loading or reached max, do not fetch
+    if (state is MovieLoading) return;
+    if (state is MovieLoaded && (state as MovieLoaded).hasReachedMax) return;
+
+    final isInitial = state is MovieInitial;
+    List<Movie> currentMovies = [];
+    int nextPage = 1;
+
+    if (state is MovieLoaded) {
+      currentMovies = (state as MovieLoaded).movies;
+      nextPage = (state as MovieLoaded).currentPage + 1;
+    } else {
+      emit(MovieLoading());
+    }
 
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
 
-      // connectivity_plus 7.x returns a List<ConnectivityResult> or a single result depending on exact version.
-      // But typically it's just checking if it's connected. Let's handle both.
       bool isConnected = false;
       // ignore: unnecessary_type_check
       if (connectivityResult is List) {
@@ -38,7 +49,6 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
       }
 
       if (isConnected) {
-        // Fetch from API
         final apiKey = dotenv.env['API_KEY'];
         if (apiKey == null || apiKey.isEmpty) {
           emit(const MovieError('API_KEY is missing in .env file'));
@@ -47,45 +57,64 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
 
         final response = await _dio.get(
           'https://api.themoviedb.org/3/movie/now_playing',
-          queryParameters: {'api_key': apiKey, 'language': 'en-US', 'page': 1},
+          queryParameters: {
+            'api_key': apiKey,
+            'language': 'en-US',
+            'page': nextPage,
+          },
         );
 
         if (response.statusCode == 200) {
           final List<dynamic> results = response.data['results'];
-          final movies = results.map((json) => Movie.fromJson(json)).toList();
+          final totalPages = response.data['total_pages'] ?? 1;
+          final newMovies = results.map((json) => Movie.fromJson(json)).toList();
+          final hasReachedMax = nextPage >= totalPages || newMovies.isEmpty;
 
-          // Cache to SharedPreferences
+          final allMovies = isInitial ? newMovies : currentMovies + newMovies;
+
+          // Cache all accumulated movies to SharedPreferences
           final prefs = await SharedPreferences.getInstance();
-          final String encodedData = jsonEncode(results);
+          final String encodedData = jsonEncode(allMovies.map((m) => m.toJson()).toList());
           await prefs.setString(_cacheKey, encodedData);
 
-          emit(MovieLoaded(movies));
+          emit(MovieLoaded(
+            movies: allMovies,
+            currentPage: nextPage,
+            hasReachedMax: hasReachedMax,
+          ));
         } else {
-          emit(
-            MovieError(
-              'Failed to fetch movies from API: ${response.statusCode}',
-            ),
-          );
+          if (isInitial) {
+            emit(MovieError('Failed to fetch movies: ${response.statusCode}'));
+          }
         }
       } else {
-        // Fetch from Local Cache
-        final prefs = await SharedPreferences.getInstance();
-        final cachedData = prefs.getString(_cacheKey);
+        // Offline Fallback
+        if (isInitial) {
+          final prefs = await SharedPreferences.getInstance();
+          final cachedData = prefs.getString(_cacheKey);
 
-        if (cachedData != null) {
-          final List<dynamic> results = jsonDecode(cachedData);
-          final movies = results.map((json) => Movie.fromJson(json)).toList();
-          emit(MovieLoaded(movies));
+          if (cachedData != null) {
+            final List<dynamic> decodedList = jsonDecode(cachedData);
+            final movies = decodedList.map((json) => Movie.fromJson(json)).toList();
+            emit(MovieLoaded(
+              movies: movies,
+              currentPage: 1,
+              hasReachedMax: true, // Offline has no more pages to load
+            ));
+          } else {
+            emit(const MovieError('No internet connection and no cached data available.'));
+          }
         } else {
-          emit(
-            const MovieError(
-              'No internet connection and no cached data available.',
-            ),
-          );
+          // If already loaded and user scrolls offline, just set reached max to true (no more offline pages)
+          if (state is MovieLoaded) {
+            emit((state as MovieLoaded).copyWith(hasReachedMax: true));
+          }
         }
       }
     } catch (e) {
-      emit(MovieError('An error occurred: $e'));
+      if (isInitial) {
+        emit(MovieError('An error occurred: $e'));
+      }
     }
   }
 }

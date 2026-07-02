@@ -112,11 +112,35 @@ class MovieProjectScreen extends StatefulWidget {
 }
 
 class _MovieProjectScreenState extends State<MovieProjectScreen> {
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     // Fetch movies when screen initializes
     context.read<MovieBloc>().add(FetchMoviesEvent());
+    
+    // Listen to scroll events to trigger infinite pagination
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_isBottom) {
+      context.read<MovieBloc>().add(FetchMoviesEvent());
+    }
+  }
+
+  bool get _isBottom {
+    if (!_scrollController.hasClients) return false;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    return maxScroll - currentScroll <= 200;
   }
 
   @override
@@ -159,9 +183,18 @@ class _MovieProjectScreenState extends State<MovieProjectScreen> {
           return ScrollConfiguration(
             behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
             child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.symmetric(vertical: 16.0),
-              itemCount: movies.length,
+              itemCount: snapshot.hasReachedMax ? movies.length : movies.length + 1,
               itemBuilder: (context, index) {
+                if (index >= movies.length) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32.0),
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
                 final movie = movies[index];
                 return BlocBuilder<FavoriteBloc, FavoriteState>(
                   builder: (context, state) {
