@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'movie_event.dart';
 import 'movie_state.dart';
 import '../main.dart';
+import '../constants.dart';
 
 class MovieBloc extends Bloc<MovieEvent, MovieState> {
   static const String _cacheKey = 'cached_movies';
@@ -56,7 +57,7 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
         }
 
         final response = await _dio.get(
-          'https://api.themoviedb.org/3/movie/now_playing',
+          '$movieBaseUrl/movie/now_playing',
           queryParameters: {
             'api_key': apiKey,
             'language': 'en-US',
@@ -67,21 +68,27 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
         if (response.statusCode == 200) {
           final List<dynamic> results = response.data['results'];
           final totalPages = response.data['total_pages'] ?? 1;
-          final newMovies = results.map((json) => Movie.fromJson(json)).toList();
+          final newMovies = results
+              .map((json) => Movie.fromJson(json))
+              .toList();
           final hasReachedMax = nextPage >= totalPages || newMovies.isEmpty;
 
           final allMovies = isInitial ? newMovies : currentMovies + newMovies;
 
           // Cache all accumulated movies to SharedPreferences
           final prefs = await SharedPreferences.getInstance();
-          final String encodedData = jsonEncode(allMovies.map((m) => m.toJson()).toList());
+          final String encodedData = jsonEncode(
+            allMovies.map((m) => m.toJson()).toList(),
+          );
           await prefs.setString(_cacheKey, encodedData);
 
-          emit(MovieLoaded(
-            movies: allMovies,
-            currentPage: nextPage,
-            hasReachedMax: hasReachedMax,
-          ));
+          emit(
+            MovieLoaded(
+              movies: allMovies,
+              currentPage: nextPage,
+              hasReachedMax: hasReachedMax,
+            ),
+          );
         } else {
           if (isInitial) {
             emit(MovieError('Failed to fetch movies: ${response.statusCode}'));
@@ -95,14 +102,22 @@ class MovieBloc extends Bloc<MovieEvent, MovieState> {
 
           if (cachedData != null) {
             final List<dynamic> decodedList = jsonDecode(cachedData);
-            final movies = decodedList.map((json) => Movie.fromJson(json)).toList();
-            emit(MovieLoaded(
-              movies: movies,
-              currentPage: 1,
-              hasReachedMax: true, // Offline has no more pages to load
-            ));
+            final movies = decodedList
+                .map((json) => Movie.fromJson(json))
+                .toList();
+            emit(
+              MovieLoaded(
+                movies: movies,
+                currentPage: 1,
+                hasReachedMax: true, // Offline has no more pages to load
+              ),
+            );
           } else {
-            emit(const MovieError('No internet connection and no cached data available.'));
+            emit(
+              const MovieError(
+                'No internet connection and no cached data available.',
+              ),
+            );
           }
         } else {
           // If already loaded and user scrolls offline, just set reached max to true (no more offline pages)

@@ -98,7 +98,9 @@ class Movie {
       'poster_path': posterPath,
       'backdrop_path': backdropPath,
       'runtime': runtime,
-      'genres': genres != null ? genres!.map((g) => {'name': g}).toList() : null,
+      'genres': genres != null
+          ? genres!.map((g) => {'name': g}).toList()
+          : null,
       'tagline': tagline,
     };
   }
@@ -119,7 +121,7 @@ class _MovieProjectScreenState extends State<MovieProjectScreen> {
     super.initState();
     // Fetch movies when screen initializes
     context.read<MovieBloc>().add(FetchMoviesEvent());
-    
+
     // Listen to scroll events to trigger infinite pagination
     _scrollController.addListener(_onScroll);
   }
@@ -180,142 +182,160 @@ class _MovieProjectScreenState extends State<MovieProjectScreen> {
             );
           } else if (snapshot is MovieLoaded) {
             final movies = snapshot.movies;
-          return ScrollConfiguration(
-            behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-              itemCount: snapshot.hasReachedMax ? movies.length : movies.length + 1,
-              itemBuilder: (context, index) {
-                if (index >= movies.length) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 32.0),
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-                final movie = movies[index];
-                return BlocBuilder<FavoriteBloc, FavoriteState>(
-                  builder: (context, state) {
-                    final isFavorited = state.favorites.contains(movie.title);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 12.0,
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => MovieDetailScreen(
-                                movie: movie,
+            return ScrollConfiguration(
+              behavior: ScrollConfiguration.of(
+                context,
+              ).copyWith(scrollbars: false),
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                itemCount: snapshot.hasReachedMax
+                    ? movies.length
+                    : movies.length + 1,
+                itemBuilder: (context, index) {
+                  if (index >= movies.length) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final movie = movies[index];
+                  return BlocBuilder<FavoriteBloc, FavoriteState>(
+                    builder: (context, state) {
+                      final isFavorited = state.favorites.contains(movie.title);
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 12.0,
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    MovieDetailScreen(movie: movie),
                               ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8.0,
+                              horizontal: 8.0,
                             ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Movie Poster
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: movie.posterPath != null
-                                    ? CachedNetworkImage(
-                                        imageUrl: 'https://image.tmdb.org/t/p/w500${movie.posterPath}',
-                                        width: 75,
-                                        height: 110,
-                                        fit: BoxFit.cover,
-                                        placeholder: (context, url) => Container(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Movie Poster
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: movie.posterPath != null
+                                      ? CachedNetworkImage(
+                                          imageUrl:
+                                              'https://image.tmdb.org/t/p/w500${movie.posterPath}',
+                                          width: 75,
+                                          height: 110,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) =>
+                                              Container(
+                                                width: 75,
+                                                height: 110,
+                                                color: const Color(0xFFE2E2E6),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              Container(
+                                                width: 75,
+                                                height: 110,
+                                                color: const Color(0xFFE2E2E6),
+                                                child: const Icon(
+                                                  Icons.error,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                        )
+                                      : Container(
                                           width: 75,
                                           height: 110,
                                           color: const Color(0xFFE2E2E6),
-                                        ),
-                                        errorWidget: (context, url, error) => Container(
-                                          width: 75,
-                                          height: 110,
-                                          color: const Color(0xFFE2E2E6),
-                                          child: const Icon(Icons.error, color: Colors.white),
-                                        ),
-                                      )
-                                    : Container(
-                                        width: 75,
-                                        height: 110,
-                                        color: const Color(0xFFE2E2E6),
-                                        child: const Icon(Icons.movie_creation_outlined, color: Colors.white),
-                                      ),
-                              ),
-                              const SizedBox(width: 16),
-                              // Movie Details
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      movie.title,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1A1A1A),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      movie.releaseDate,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        color: Color(0xFF8E8E93),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.star,
-                                          color: Color(0xFFFFCC00),
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          movie.rating.toStringAsFixed(1),
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF1A1A1A),
+                                          child: const Icon(
+                                            Icons.movie_creation_outlined,
+                                            color: Colors.white,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ],
                                 ),
-                              ),
-                              // Favorite button
-                              IconButton(
-                                icon: Icon(
-                                  isFavorited ? Icons.favorite : Icons.favorite_border,
-                                  color: isFavorited
-                                      ? const Color(0xFFFF3B30)
-                                      : const Color(0xFF8E8E93),
+                                const SizedBox(width: 16),
+                                // Movie Details
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        movie.title,
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF1A1A1A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        movie.releaseDate,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Color(0xFF8E8E93),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.star,
+                                            color: Color(0xFFFFCC00),
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            movie.rating.toStringAsFixed(1),
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF1A1A1A),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                onPressed: () {
-                                  context.read<FavoriteBloc>().add(ToggleFavoriteEvent(movie.title));
-                                },
-                              ),
-                            ],
+                                // Favorite button
+                                IconButton(
+                                  icon: Icon(
+                                    isFavorited
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: isFavorited
+                                        ? const Color(0xFFFF3B30)
+                                        : const Color(0xFF8E8E93),
+                                  ),
+                                  onPressed: () {
+                                    context.read<FavoriteBloc>().add(
+                                      ToggleFavoriteEvent(movie.title),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          );
+                      );
+                    },
+                  );
+                },
+              ),
+            );
           }
           return const SizedBox();
         },
@@ -327,30 +347,30 @@ class _MovieProjectScreenState extends State<MovieProjectScreen> {
 class MovieDetailScreen extends StatelessWidget {
   final Movie movie;
 
-  const MovieDetailScreen({
-    super.key,
-    required this.movie,
-  });
+  const MovieDetailScreen({super.key, required this.movie});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => MovieDetailBloc()..add(FetchMovieDetailEvent(movie.id)),
+      create: (context) =>
+          MovieDetailBloc()..add(FetchMovieDetailEvent(movie.id)),
       child: BlocBuilder<MovieDetailBloc, MovieDetailState>(
         builder: (context, detailState) {
           if (detailState is MovieDetailLoading) {
             return const Scaffold(
               backgroundColor: Color(0xFFF9F9FC),
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
+              body: Center(child: CircularProgressIndicator()),
             );
           } else if (detailState is MovieDetailError) {
             return Scaffold(
               backgroundColor: const Color(0xFFF9F9FC),
               appBar: AppBar(
                 leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1A1A1A), size: 20),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new,
+                    color: Color(0xFF1A1A1A),
+                    size: 20,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
                 title: const Text(
@@ -371,12 +391,19 @@ class MovieDetailScreen extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.red,
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         detailState.message,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16, color: Color(0xFF1A1A1A)),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
                     ],
                   ),
@@ -388,15 +415,23 @@ class MovieDetailScreen extends StatelessWidget {
 
             return BlocBuilder<FavoriteBloc, FavoriteState>(
               builder: (context, favState) {
-                final isFavorited = favState.favorites.contains(movieDetail.title);
+                final isFavorited = favState.favorites.contains(
+                  movieDetail.title,
+                );
                 final genresStr = movieDetail.genres?.join(', ') ?? 'N/A';
-                final runtimeStr = movieDetail.runtime != null ? '${movieDetail.runtime} min' : 'N/A';
+                final runtimeStr = movieDetail.runtime != null
+                    ? '${movieDetail.runtime} min'
+                    : 'N/A';
 
                 return Scaffold(
                   backgroundColor: const Color(0xFFF9F9FC),
                   appBar: AppBar(
                     leading: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1A1A1A), size: 20),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new,
+                        color: Color(0xFF1A1A1A),
+                        size: 20,
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                     title: const Text(
@@ -412,16 +447,23 @@ class MovieDetailScreen extends StatelessWidget {
                     elevation: 0,
                     bottom: PreferredSize(
                       preferredSize: const Size.fromHeight(1.0),
-                      child: Container(color: const Color(0xFFE5E5EA), height: 1.0),
+                      child: Container(
+                        color: const Color(0xFFE5E5EA),
+                        height: 1.0,
+                      ),
                     ),
                     actions: [
                       IconButton(
                         icon: Icon(
                           isFavorited ? Icons.favorite : Icons.favorite_border,
-                          color: isFavorited ? const Color(0xFFFF3B30) : const Color(0xFF8E8E93),
+                          color: isFavorited
+                              ? const Color(0xFFFF3B30)
+                              : const Color(0xFF8E8E93),
                         ),
                         onPressed: () {
-                          context.read<FavoriteBloc>().add(ToggleFavoriteEvent(movieDetail.title));
+                          context.read<FavoriteBloc>().add(
+                            ToggleFavoriteEvent(movieDetail.title),
+                          );
                         },
                       ),
                     ],
@@ -441,27 +483,48 @@ class MovieDetailScreen extends StatelessWidget {
                               color: const Color(0xFFE2E2E6),
                               child: movieDetail.backdropPath != null
                                   ? CachedNetworkImage(
-                                      imageUrl: 'https://image.tmdb.org/t/p/w780${movieDetail.backdropPath}',
+                                      imageUrl:
+                                          'https://image.tmdb.org/t/p/w780${movieDetail.backdropPath}',
                                       width: double.infinity,
                                       height: 220,
                                       fit: BoxFit.cover,
-                                      errorWidget: (context, url, error) => const Center(
-                                        child: Icon(Icons.movie_creation_outlined, color: Colors.white, size: 64),
-                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          const Center(
+                                            child: Icon(
+                                              Icons.movie_creation_outlined,
+                                              color: Colors.white,
+                                              size: 64,
+                                            ),
+                                          ),
                                     )
                                   : (movieDetail.posterPath != null
-                                      ? CachedNetworkImage(
-                                          imageUrl: 'https://image.tmdb.org/t/p/w500${movieDetail.posterPath}',
-                                          width: double.infinity,
-                                          height: 220,
-                                          fit: BoxFit.cover,
-                                          errorWidget: (context, url, error) => const Center(
-                                            child: Icon(Icons.movie_creation_outlined, color: Colors.white, size: 64),
-                                          ),
-                                        )
-                                      : const Center(
-                                          child: Icon(Icons.movie_creation_outlined, color: Colors.white, size: 64),
-                                        )),
+                                        ? CachedNetworkImage(
+                                            imageUrl:
+                                                'https://image.tmdb.org/t/p/w500${movieDetail.posterPath}',
+                                            width: double.infinity,
+                                            height: 220,
+                                            fit: BoxFit.cover,
+                                            errorWidget:
+                                                (
+                                                  context,
+                                                  url,
+                                                  error,
+                                                ) => const Center(
+                                                  child: Icon(
+                                                    Icons
+                                                        .movie_creation_outlined,
+                                                    color: Colors.white,
+                                                    size: 64,
+                                                  ),
+                                                ),
+                                          )
+                                        : const Center(
+                                            child: Icon(
+                                              Icons.movie_creation_outlined,
+                                              color: Colors.white,
+                                              size: 64,
+                                            ),
+                                          )),
                             ),
                             // Bottom Gradient Overlay for transition
                             Positioned(
@@ -504,22 +567,35 @@ class MovieDetailScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(12),
                                   child: movieDetail.posterPath != null
                                       ? CachedNetworkImage(
-                                          imageUrl: 'https://image.tmdb.org/t/p/w500${movieDetail.posterPath}',
+                                          imageUrl:
+                                              'https://image.tmdb.org/t/p/w500${movieDetail.posterPath}',
                                           width: 100,
                                           height: 150,
                                           fit: BoxFit.cover,
-                                          placeholder: (context, url) => Container(
-                                            color: const Color(0xFFE2E2E6),
-                                            child: const Center(child: CircularProgressIndicator()),
-                                          ),
-                                          errorWidget: (context, url, error) => Container(
-                                            color: const Color(0xFFE2E2E6),
-                                            child: const Icon(Icons.error, color: Colors.white),
-                                          ),
+                                          placeholder: (context, url) =>
+                                              Container(
+                                                color: const Color(0xFFE2E2E6),
+                                                child: const Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
+                                                ),
+                                              ),
+                                          errorWidget: (context, url, error) =>
+                                              Container(
+                                                color: const Color(0xFFE2E2E6),
+                                                child: const Icon(
+                                                  Icons.error,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
                                         )
                                       : Container(
                                           color: const Color(0xFFE2E2E6),
-                                          child: const Icon(Icons.movie_creation_outlined, color: Colors.white, size: 48),
+                                          child: const Icon(
+                                            Icons.movie_creation_outlined,
+                                            color: Colors.white,
+                                            size: 48,
+                                          ),
                                         ),
                                 ),
                               ),
@@ -549,7 +625,8 @@ class MovieDetailScreen extends StatelessWidget {
                                         letterSpacing: -0.5,
                                       ),
                                     ),
-                                    if (movieDetail.tagline != null && movieDetail.tagline!.isNotEmpty) ...[
+                                    if (movieDetail.tagline != null &&
+                                        movieDetail.tagline!.isNotEmpty) ...[
                                       const SizedBox(height: 4),
                                       Text(
                                         '"${movieDetail.tagline}"',
@@ -677,7 +754,9 @@ class MovieDetailScreen extends StatelessWidget {
                                 height: 56,
                                 child: ElevatedButton.icon(
                                   onPressed: () {
-                                    context.read<FavoriteBloc>().add(ToggleFavoriteEvent(movieDetail.title));
+                                    context.read<FavoriteBloc>().add(
+                                      ToggleFavoriteEvent(movieDetail.title),
+                                    );
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: isFavorited
@@ -691,18 +770,24 @@ class MovieDetailScreen extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(16),
                                       side: BorderSide(
                                         color: isFavorited
-                                            ? const Color(0xFFFF3B30).withOpacity(0.5)
+                                            ? const Color(
+                                                0xFFFF3B30,
+                                              ).withOpacity(0.5)
                                             : const Color(0xFFE5E5EA),
                                         width: 1.5,
                                       ),
                                     ),
                                   ),
                                   icon: Icon(
-                                    isFavorited ? Icons.favorite : Icons.favorite_border,
+                                    isFavorited
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
                                     size: 20,
                                   ),
                                   label: Text(
-                                    isFavorited ? 'Remove from Favorites' : 'Add to Favorites',
+                                    isFavorited
+                                        ? 'Remove from Favorites'
+                                        : 'Add to Favorites',
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,

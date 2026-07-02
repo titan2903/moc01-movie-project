@@ -6,9 +6,7 @@ class FavoriteState extends Equatable {
   const FavoriteState({this.favorites = const {}});
 
   FavoriteState copyWith({Set<String>? favorites}) {
-    return FavoriteState(
-      favorites: favorites ?? this.favorites,
-    );
+    return FavoriteState(favorites: favorites ?? this.favorites);
   }
 
   @override

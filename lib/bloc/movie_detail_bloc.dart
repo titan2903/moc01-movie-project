@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'movie_detail_event.dart';
 import 'movie_detail_state.dart';
 import '../main.dart';
+import '../constants.dart';
 
 class MovieDetailBloc extends Bloc<MovieDetailEvent, MovieDetailState> {
   final Dio _dio = Dio();
@@ -44,7 +45,7 @@ class MovieDetailBloc extends Bloc<MovieDetailEvent, MovieDetailState> {
         }
 
         final response = await _dio.get(
-          'https://api.themoviedb.org/3/movie/${event.movieId}',
+          '$movieBaseUrl/movie/${event.movieId}',
           queryParameters: {'api_key': apiKey, 'language': 'en-US'},
         );
 
